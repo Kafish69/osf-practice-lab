@@ -253,7 +253,7 @@ function home(){
   const rb = $('#reset'); let armed = false;
   rb.onclick = () => {
     if (!armed){ armed = true; rb.textContent = 'Tap again to reset everything'; rb.classList.add('danger'); setTimeout(() => { if (armed && document.body.contains(rb)){ armed = false; rb.textContent = 'Reset progress'; rb.classList.remove('danger'); } }, 4000); return; }
-    S.hist=[]; S.tstats={}; S.best=0; S.known={}; S.topics=[]; save();
+    S.hist=[]; S.tstats={}; S.best=0; S.known={}; S.topics=[]; S.fl=null; save();
     streak = 0; $('#streak').textContent = 'streak 0'; mock = null; quiz = null; fl = null; drill = {};
     home(); toast('Progress reset');
   };
@@ -415,25 +415,37 @@ function term(){
 
 // ================= FLASHCARDS
 let fl = null;
-function flashStart(){ const ids = DATA.flash.map((c,i)=>i).filter(i => sel().includes(DATA.flash[i].t)); fl = {q: shuffle(ids), got:0, total: ids.length, flipped:false}; flash(); }
+try { if (S.fl && Array.isArray(S.fl.q)) fl = S.fl; } catch(e){}
+const flSave = () => { S.fl = fl; save(); };
+function flashStart(){ const ids = DATA.flash.map((c,i)=>i).filter(i => sel().includes(DATA.flash[i].t)); fl = {q: shuffle(ids), got:0, total: ids.length, flipped:false, key: sel().join()}; flSave(); flash(); }
 function flash(){
-  if (!fl) return flashStart();
-  if (!fl.q.length){ if (fl.total) confetti(30);
-    app.innerHTML = `<h2>Flashcards</h2>${chips()}<div class="card" style="text-align:center"><div class="score">${fl.total?'done!':'—'}</div><p class="lead">${fl.total?`All ${fl.total} cards known.`:'No cards for this selection.'}</p></div><div class="row"><button class="btn pri" id="again">Shuffle again</button></div>`;
+  if (!fl || fl.key !== sel().join()) return flashStart();
+  if (!fl.q.length){
+    app.innerHTML = `<h2>Flashcards</h2>${chips()}<div class="card" style="text-align:center"><div class="score">${fl.total?'done':'—'}</div><p class="lead" style="margin:8px auto 0">${fl.total?`All ${fl.total} cards known.`:'No cards for this selection.'}</p></div><div class="row"><button class="btn pri" id="again">Shuffle again</button></div>`;
     bindChips(flashStart); $('#again').onclick = flashStart; return; }
   const c = DATA.flash[fl.q[0]];
   app.innerHTML = `<h2>Flashcards</h2>${chips()}<div class="row small muted" style="margin-top:8px"><span>${fl.got}/${fl.total} known</span><span class="sp"></span><span>${fl.q.length} left</span></div>
   <div class="bar" style="margin:8px 0"><i style="width:${fl.total?100*fl.got/fl.total:0}%"></i></div>
-  <div class="flash ${fl.flipped?'flip':''}" id="card"><div class="in"><div class="f"><small>${esc(T[c.t].n)}</small>${esc(c.f)}<div class="small muted" style="margin-top:14px;font-weight:500">tap to flip · <span class="kbd">space</span></div></div><div class="b"><small>answer</small>${esc(c.b)}</div></div></div>
-  <div class="row" style="justify-content:center"><button class="btn" id="lrn">Still learning</button><button class="btn pri" id="gt">Got it</button></div>`;
+  <div class="flash ${fl.flipped?'flip':''}" id="card"><div class="in">
+    <div class="f"><small>${esc(T[c.t].n)}</small>${esc(c.f)}<div class="small muted" style="margin-top:14px;font-weight:500">tap to see the answer</div></div>
+    <div class="b"><small>${esc(T[c.t].n)}</small><div class="small muted" style="font-family:var(--sans);margin-bottom:10px">${esc(c.f)}</div>${esc(c.b)}</div>
+  </div></div>
+  <div class="row" style="justify-content:center" id="facts"></div>`;
   bindChips(flashStart);
   const card = $('#card');
-  card.onclick = () => { fl.flipped = !fl.flipped; card.classList.toggle('flip', fl.flipped); };
-  const later = () => { if (!fl.flipped){ fl.flipped = true; card.classList.add('flip'); toast('Here is the answer. Study it, then tap again.'); return; }
-    const id = fl.q.shift(); fl.q.splice(Math.min(fl.q.length, 3+Math.floor(Math.random()*3)), 0, id); fl.flipped = false; hit(false); flash(); };
-  const got = () => { fl.q.shift(); fl.got++; fl.flipped = false; hit(true); flash(); };
-  $('#lrn').onclick = later; $('#gt').onclick = got;
-  keyH = e => { if (e.key===' '){ e.preventDefault(); card.click(); } else if (e.key==='ArrowRight') got(); else if (e.key==='ArrowLeft') later(); };
+  const buttons = () => {
+    $('#facts').innerHTML = fl.flipped
+      ? `<button class="btn" id="lrn">Still learning <span class="kbd">←</span></button><button class="btn pri" id="gt">Got it <span class="kbd">→</span></button>`
+      : `<button class="btn pri" id="show">Show answer <span class="kbd">space</span></button>`;
+    if (fl.flipped){ $('#lrn').onclick = later; $('#gt').onclick = got; } else $('#show').onclick = flip;
+  };
+  const flip = () => { fl.flipped = !fl.flipped; card.classList.toggle('flip', fl.flipped); flSave(); buttons(); };
+  // still learning: same card goes back into the deck a few cards later
+  const later = () => { if (!fl.flipped) return; const id = fl.q.shift(); fl.q.splice(Math.min(fl.q.length, 3+Math.floor(Math.random()*3)), 0, id); fl.flipped = false; hit(false); flSave(); flash(); };
+  const got = () => { if (!fl.flipped) return; fl.q.shift(); fl.got++; fl.flipped = false; hit(true); flSave(); flash(); };
+  card.onclick = flip;
+  buttons();
+  keyH = e => { if (e.key===' '){ e.preventDefault(); flip(); } else if (e.key==='ArrowRight') got(); else if (e.key==='ArrowLeft') later(); };
 }
 
 // ================= CHEAT SHEET
@@ -452,7 +464,7 @@ function route(){
   const r = (location.hash.replace(/^#\/?/,'') || '').split('/')[0];
   keyH = null; nav(r); clearInterval(timer);
   if (r !== 'mock' && mock && !mock.done) {} // keep unfinished mock in memory
-  ({ '':home, mock: () => mock && !mock.done ? mockRun() : mock && mock.done ? mockResults(false) : mockStart(), quiz: quizStart, fill, term, flash: flashStart, cheat }[r] || home)();
+  ({ '':home, mock: () => mock && !mock.done ? mockRun() : mock && mock.done ? mockResults(false) : mockStart(), quiz: quizStart, fill, term, flash, cheat }[r] || home)();
   if (r !== 'term' && r !== 'fill') scrollTo(0,0);
 }
 addEventListener('hashchange', route);
