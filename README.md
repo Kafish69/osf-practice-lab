@@ -1,15 +1,15 @@
-# 🐧 osf.lab
+# osf.lab
 
 Practice site for the **KdG Applied Computer Science – Operating System Fundamentals** T1 exam (closed book, 1 hour, short answers).
 
-**▶ Live:** https://kafish69.github.io/osf-practice-lab/
+**Live:** https://kafish69.github.io/osf-practice-lab/
 
-- 📝 **Mock exam**: 25 random exam-style questions across all 13 topics, 60-min timer, score per topic and full review
-- ⌨️ **Terminal**: read the task, type the command, instant check
-- 🧩 **Fill & predict**: fill the `________` and predict outputs (paths, permissions, pipes, globbing)
-- 🎯 **Quiz**: multiple choice for the concepts
-- 🃏 **Flashcards**: "still learning" cards come back
-- 📄 **Cheat sheet**: every command on one page
+- **Mock exam**: 25 random exam-style questions across all 13 topics, 60-min timer, score per topic and full review
+- **Terminal**: read the task, type the command, instant check
+- **Fill & predict**: fill the `________` and predict outputs (paths, permissions, pipes, globbing)
+- **Quiz**: multiple choice for the concepts
+- **Flashcards**: "still learning" cards come back
+- **Cheat sheet**: every command on one page
 
 201 exam-style questions · 76 quiz questions · 84 flashcards, built from the Canvas chapters, slides and both practice exams.
 
